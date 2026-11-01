@@ -1,0 +1,238 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #0f0514 0%, #060209 60%, #000002 100%);
+  font-family: 'Poppins', sans-serif;
+  width: 100vw;
+  height: 100vh;
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+}
+
+svg {
+  position: absolute;
+  display: none;
+}
+
+/* Romantic Music Button */
+.music-btn {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: rgba(22, 10, 28, 0.75);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 30px;
+  color: #ffd700;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 215, 0, 0.25);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.music-btn:hover {
+  background: rgba(45, 15, 50, 0.9);
+  border-color: rgba(255, 215, 0, 0.8);
+  box-shadow: 0 4px 25px rgba(255, 105, 180, 0.4), 0 0 25px rgba(255, 215, 0, 0.6);
+  transform: translateY(-2px) scale(1.04);
+}
+
+.music-btn.playing {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.7), 0 0 35px rgba(238, 82, 130, 0.4);
+}
+
+.music-btn.playing .music-icon {
+  display: inline-block;
+  animation: spinMusic 3.5s linear infinite;
+}
+
+@keyframes spinMusic {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ambient Radial Glow behind the Heart */
+.heart-glow-backdrop {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: 480px;
+  height: 480px;
+  transform: translate(-50%, -50%) scale(0.6);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 60, 130, 0.45) 0%, rgba(238, 82, 130, 0.22) 40%, rgba(255, 120, 160, 0.08) 60%, transparent 75%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  filter: blur(35px);
+  transition: opacity 2.5s ease, transform 2.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.heart-glow-backdrop.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  animation: auraPulse 2.8s infinite ease-in-out;
+}
+
+@keyframes auraPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.18);
+    opacity: 1;
+  }
+}
+
+/* Golden Message Container */
+.golden-message-container {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translate(-50%, 30px);
+  text-align: center;
+  z-index: 20;
+  pointer-events: none;
+  user-select: none;
+  width: 92%;
+  max-width: 900px;
+  opacity: 0;
+  transition: opacity 2.2s ease, transform 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.golden-message-container.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.golden-title {
+  font-family: 'Dancing Script', cursive;
+  font-size: clamp(2.3rem, 5.5vw, 4.2rem);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #fff7c2 0%, #ffd700 25%, #ffae19 50%, #fff29a 75%, #e5b323 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.75)) drop-shadow(0 0 35px rgba(255, 175, 25, 0.5));
+  animation: goldenShimmer 4s ease infinite;
+}
+
+.golden-subtitle {
+  font-family: 'Dancing Script', cursive;
+  font-size: clamp(1.4rem, 3.5vw, 2.5rem);
+  font-weight: 600;
+  margin: 6px 0 0 0;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #fff3ab 0%, #ffdf00 35%, #f5ad18 70%, #fff5bf 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.7)) drop-shadow(0 0 25px rgba(255, 185, 30, 0.4));
+  animation: goldenShimmer 4s ease infinite reverse;
+}
+
+.healing-emoji {
+  -webkit-text-fill-color: initial;
+  filter: drop-shadow(0 0 10px rgba(255, 105, 135, 0.8));
+  display: inline-block;
+  animation: heartbeatEmoji 1.5s infinite ease-in-out;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes goldenShimmer {
+  0% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.75)) drop-shadow(0 0 30px rgba(255, 175, 25, 0.45));
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 25px rgba(255, 230, 70, 0.95)) drop-shadow(0 0 45px rgba(255, 190, 30, 0.7));
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.75)) drop-shadow(0 0 30px rgba(255, 175, 25, 0.45));
+  }
+}
+
+@keyframes heartbeatEmoji {
+  0%, 100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.25);
+  }
+  35% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  65% {
+    transform: scale(1);
+  }
+}
+
+/* Falling Love and Evil Eye Emojis */
+#emoji-rain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.falling-emoji {
+  position: absolute;
+  top: -60px;
+  animation-name: fallAnimation;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  user-select: none;
+  will-change: transform, top, opacity;
+  filter: drop-shadow(0 0 8px rgba(255, 105, 180, 0.45));
+}
+
+@keyframes fallAnimation {
+  0% {
+    top: -60px;
+    opacity: 0;
+    transform: translateX(0) rotate(0deg);
+  }
+  12% {
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 108vh;
+    opacity: 0;
+    transform: translateX(var(--drift, 40px)) rotate(var(--spin, 180deg));
+  }
+}
