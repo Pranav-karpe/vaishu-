@@ -29,15 +29,27 @@ musicBtn.addEventListener("click", (e) => {
 });
 
 music.volume = 0.8;
-music.play().then(() => updateMusicUI(true)).catch(() => {
-  const unlock = () => {
-    music.play().then(() => updateMusicUI(true)).catch(() => {});
-    window.removeEventListener("click", unlock);
-    window.removeEventListener("keydown", unlock);
-  };
-  window.addEventListener("click", unlock);
-  window.addEventListener("keydown", unlock);
-});
+music.loop = true;
+
+function tryPlay() {
+  music.play().then(() => updateMusicUI(true)).catch(() => {});
+}
+
+tryPlay();
+
+// Retry on any user interaction until playing
+const unlockEvents = ["click", "keydown", "touchstart", "mousemove", "scroll"];
+function unlockAudio() {
+  if (music.paused) tryPlay();
+  if (!music.paused) unlockEvents.forEach(ev => window.removeEventListener(ev, unlockAudio));
+}
+unlockEvents.forEach(ev => window.addEventListener(ev, unlockAudio));
+
+// Fallback: keep retrying every second until playing
+const musicRetry = setInterval(() => {
+  if (!music.paused) { clearInterval(musicRetry); return; }
+  tryPlay();
+}, 1000);
 
 /* THREE.JS SCENE */
 const scene = new THREE.Scene();
