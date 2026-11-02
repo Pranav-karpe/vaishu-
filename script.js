@@ -8,61 +8,40 @@ const musicText = document.getElementById("music-text");
 
 function updateMusicUI(isPlaying) {
   if (isPlaying) {
-    if (musicBtn) musicBtn.classList.add("playing");
-    if (musicIcon) musicIcon.textContent = "🎶";
-    if (musicText) musicText.textContent = "Music Playing";
+    musicBtn.classList.add("playing");
+    musicIcon.textContent = "🎶";
+    musicText.textContent = "Music Playing";
   } else {
-    if (musicBtn) musicBtn.classList.remove("playing");
-    if (musicIcon) musicIcon.textContent = "🎵";
-    if (musicText) musicText.textContent = "Play Music";
+    musicBtn.classList.remove("playing");
+    musicIcon.textContent = "🎵";
+    musicText.textContent = "Play Music";
   }
 }
 
-function toggleMusic() {
-  if (!music) return;
+musicBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
   if (music.paused) {
     music.play().then(() => updateMusicUI(true)).catch(console.error);
   } else {
     music.pause();
     updateMusicUI(false);
   }
-}
+});
 
-if (musicBtn) {
-  musicBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleMusic();
-  });
-}
+music.volume = 0.8;
+music.play().then(() => updateMusicUI(true)).catch(() => {
+  const unlock = () => {
+    music.play().then(() => updateMusicUI(true)).catch(() => {});
+    window.removeEventListener("click", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("click", unlock);
+  window.addEventListener("keydown", unlock);
+});
 
-// Attempt immediate playback or unlock on first user gesture
-if (music) {
-  music.volume = 0.8;
-  music.play().then(() => {
-    updateMusicUI(true);
-  }).catch(() => {
-    const unlockAudio = () => {
-      if (music.paused) {
-        music.play().then(() => updateMusicUI(true)).catch(() => {});
-      }
-      window.removeEventListener("click", unlockAudio);
-      window.removeEventListener("touchstart", unlockAudio);
-      window.removeEventListener("keydown", unlockAudio);
-    };
-    window.addEventListener("click", unlockAudio);
-    window.addEventListener("touchstart", unlockAudio);
-    window.addEventListener("keydown", unlockAudio);
-  });
-}
-
-/* SETUP THREE.JS SCENE */
+/* THREE.JS SCENE */
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  5000
-);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.z = 520;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -70,44 +49,48 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* ORBIT CONTROLS */
-const controlsWebGL = new THREE.OrbitControls(camera, renderer.domElement);
-controlsWebGL.enableDamping = true;
-controlsWebGL.dampingFactor = 0.05;
-controlsWebGL.enableZoom = true;
-
-/* HEART PARTICLES SETUP */
-const path = document.querySelector("path");
-const length = path.getTotalLength();
-const vertices = [];
-let isForming = true;
-
-// GSAP timeline starts immediately when website opens
-const tl = gsap.timeline({
-  onComplete: onHeartTransitionComplete
+/* ORBIT CONTROLS — inline since THREE.OrbitControls path varies */
+let isDragging = false, prevMouse = { x: 0, y: 0 };
+renderer.domElement.addEventListener("mousedown", e => { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; });
+window.addEventListener("mouseup", () => isDragging = false);
+window.addEventListener("mousemove", e => {
+  if (!isDragging) return;
+  scene.rotation.y += (e.clientX - prevMouse.x) * 0.005;
+  scene.rotation.x += (e.clientY - prevMouse.y) * 0.005;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener("wheel", e => {
+  camera.position.z = Math.max(200, Math.min(900, camera.position.z + e.deltaY * 0.3));
 });
 
-// Generate heart boundary points with jittered 3D depth
-for (let i = 0; i < length; i += 0.15) {
-  const point = path.getPointAtLength(i);
-  const targetX = point.x + (Math.random() - 0.5) * 28;
-  const targetY = -point.y + (Math.random() - 0.5) * 28;
-  const targetZ = (Math.random() - 0.5) * 75;
+/* HEART POINTS from SVG path */
+const svgPath = document.querySelector("path");
+const pathLen = svgPath.getTotalLength();
+const COUNT = 4000;
 
-  const vector = new THREE.Vector3(targetX, targetY, targetZ);
-  vertices.push(vector);
-
-  // Transition: Particles fly and explode out from center into heart shape
-  tl.from(vector, {
-    x: 600 / 2 + (Math.random() - 0.5) * 20,
-    y: -552 / 2 + (Math.random() - 0.5) * 20,
-    z: (Math.random() - 0.5) * 50,
-    ease: "power2.out",
-    duration: gsap.utils.random(2.0, 3.4)
-  }, (i / length) * 2.2);
+// Target positions (heart shape)
+const targets = [];
+for (let i = 0; i < COUNT; i++) {
+  const pt = svgPath.getPointAtLength((i / COUNT) * pathLen);
+  targets.push({
+    x: pt.x - 300 + (Math.random() - 0.5) * 20,
+    y: -(pt.y - 276) + (Math.random() - 0.5) * 20,
+    z: (Math.random() - 0.5) * 60
+  });
 }
 
-const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
+// Current positions start scattered (explosion origin)
+const positions = new Float32Array(COUNT * 3);
+const scatter = 600;
+for (let i = 0; i < COUNT; i++) {
+  positions[i * 3]     = (Math.random() - 0.5) * scatter;
+  positions[i * 3 + 1] = (Math.random() - 0.5) * scatter;
+  positions[i * 3 + 2] = (Math.random() - 0.5) * scatter;
+}
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
 const material = new THREE.PointsMaterial({
   color: 0xff3875,
   blending: THREE.AdditiveBlending,
@@ -117,117 +100,95 @@ const material = new THREE.PointsMaterial({
 });
 
 const particles = new THREE.Points(geometry, material);
-// Center the heart and position slightly elevated for message breathing room
-particles.position.x -= 600 / 2;
-particles.position.y += 552 / 2 + 35;
 scene.add(particles);
 
-// Subtle continuous rotation sway
-gsap.fromTo(scene.rotation, {
-  y: -0.16
-}, {
-  y: 0.16,
-  repeat: -1,
-  yoyo: true,
-  ease: 'sine.inOut',
-  duration: 3.5
-});
+/* ANIMATION STATE */
+let progress = 0; // 0 → 1 over ~2.5s
+let formed = false;
+const FORM_DURATION = 2500; // ms
+let startTime = null;
 
-/* ON TRANSITION COMPLETE */
-function onHeartTransitionComplete() {
-  isForming = false;
-  // Ensure points are locked into final positions
-  geometry.setFromPoints(vertices);
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-  // 1. Activate ambient glowing backdrop behind heart
-  const heartGlow = document.getElementById('heart-glow');
-  if (heartGlow) heartGlow.classList.add('active');
+function onHeartFormed() {
+  formed = true;
 
-  // 2. Continuous Glowing and Heartbeat on the Heart
-  // Pulse particle size & color brightness for radiant glow
-  gsap.to(material, {
-    size: 4.4,
-    opacity: 1,
-    duration: 1.1,
-    repeat: -1,
-    yoyo: true,
-    ease: "sine.inOut"
-  });
+  // Glow backdrop
+  document.getElementById("heart-glow").classList.add("active");
 
-  // Heartbeat pulse rhythm
-  const heartbeat = gsap.timeline({ repeat: -1, repeatDelay: 0.55 });
-  heartbeat
-    .to(particles.scale, { x: 1.09, y: 1.09, z: 1.09, duration: 0.18, ease: "power2.out" })
-    .to(particles.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.18, ease: "power2.in" })
-    .to(particles.scale, { x: 1.05, y: 1.05, z: 1.05, duration: 0.14, ease: "power2.out" })
-    .to(particles.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.22, ease: "power2.inOut" });
+  // Reveal message
+  document.getElementById("golden-message").classList.add("show");
 
-  // 3. Reveal Golden Message
-  const goldenMessage = document.getElementById('golden-message');
-  if (goldenMessage) {
-    goldenMessage.classList.add('show');
-  }
+  // Heartbeat pulse via JS
+  let beat = 0;
+  setInterval(() => {
+    beat++;
+    const s = beat % 2 === 0 ? 1.08 : 1.0;
+    gsap.to(particles.scale, { x: s, y: s, z: s, duration: 0.18, ease: "power2.out" });
+  }, 400);
 
-  // 4. Start Falling Love & Evil Eye Emojis
+  // Glow pulse
+  gsap.to(material, { size: 4.2, opacity: 1, duration: 1.0, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+  // Start emoji rain
   startFallingEmojis();
 }
 
-/* FALLING EMOJIS (LOVE & EVIL EYE) */
-function startFallingEmojis() {
-  const container = document.getElementById('emoji-rain');
-  if (!container) return;
-
-  const emojiPool = ['🧿', '💖', '❤️', '💕', '🧿', '✨', '🥰', '💗', '🧿', '❤️‍🩹'];
-
-  function spawnEmoji() {
-    const el = document.createElement('div');
-    el.className = 'falling-emoji';
-    el.textContent = emojiPool[Math.floor(Math.random() * emojiPool.length)];
-
-    const startX = Math.random() * 95; // 0 to 95 vw
-    const size = 20 + Math.random() * 24; // 20px to 44px
-    const duration = 4.5 + Math.random() * 4.0; // 4.5s to 8.5s
-    const drift = (Math.random() - 0.5) * 120; // horizontal wobble drift
-    const spin = (Math.random() - 0.5) * 360; // rotation
-
-    el.style.left = `${startX}vw`;
-    el.style.fontSize = `${size}px`;
-    el.style.animationDuration = `${duration}s`;
-    el.style.setProperty('--drift', `${drift}px`);
-    el.style.setProperty('--spin', `${spin}deg`);
-
-    container.appendChild(el);
-
-    // Clean up when animation finishes
-    setTimeout(() => {
-      el.remove();
-    }, duration * 1000);
-  }
-
-  // Initial burst of emojis
-  for (let j = 0; j < 6; j++) {
-    setTimeout(spawnEmoji, j * 180);
-  }
-
-  // Continuous rain
-  setInterval(spawnEmoji, 320);
-}
-
-/* RENDERING LOOP */
-function render() {
+/* RENDER LOOP */
+function render(ts) {
   requestAnimationFrame(render);
-  if (isForming) {
-    geometry.setFromPoints(vertices);
+
+  if (!formed) {
+    if (!startTime) startTime = ts;
+    progress = Math.min((ts - startTime) / FORM_DURATION, 1);
+    const eased = easeOutCubic(progress);
+
+    const pos = geometry.attributes.position.array;
+    for (let i = 0; i < COUNT; i++) {
+      pos[i * 3]     += (targets[i].x - pos[i * 3])     * eased * 0.08;
+      pos[i * 3 + 1] += (targets[i].y - pos[i * 3 + 1]) * eased * 0.08;
+      pos[i * 3 + 2] += (targets[i].z - pos[i * 3 + 2]) * eased * 0.08;
+    }
+    geometry.attributes.position.needsUpdate = true;
+
+    if (progress >= 1) onHeartFormed();
   }
-  controlsWebGL.update();
+
+  // Gentle sway
+  if (!isDragging) {
+    scene.rotation.y = Math.sin(Date.now() * 0.0004) * 0.18;
+  }
+
   renderer.render(scene, camera);
 }
 requestAnimationFrame(render);
 
-/* WINDOW RESIZE */
-function onWindowResize() {
+/* FALLING EMOJIS */
+function startFallingEmojis() {
+  const container = document.getElementById("emoji-rain");
+  const pool = ["🧿", "💖", "❤️", "💕", "✨", "🥰", "💗", "❤️🩹"];
+
+  function spawn() {
+    const el = document.createElement("div");
+    el.className = "falling-emoji";
+    el.textContent = pool[Math.floor(Math.random() * pool.length)];
+    const dur = 4.5 + Math.random() * 4;
+    el.style.left = `${Math.random() * 95}vw`;
+    el.style.fontSize = `${20 + Math.random() * 24}px`;
+    el.style.animationDuration = `${dur}s`;
+    el.style.setProperty("--drift", `${(Math.random() - 0.5) * 120}px`);
+    el.style.setProperty("--spin", `${(Math.random() - 0.5) * 360}deg`);
+    container.appendChild(el);
+    setTimeout(() => el.remove(), dur * 1000);
+  }
+
+  for (let i = 0; i < 8; i++) setTimeout(spawn, i * 150);
+  setInterval(spawn, 320);
+}
+
+/* RESIZE */
+window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
-window.addEventListener("resize", onWindowResize, false);
+});
