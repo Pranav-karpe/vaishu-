@@ -105,7 +105,7 @@ scene.add(particles);
 /* ANIMATION STATE */
 let progress = 0; // 0 → 1 over ~2.5s
 let formed = false;
-const FORM_DURATION = 2500; // ms
+const FORM_DURATION = 2200; // ms
 let startTime = null;
 
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
@@ -116,8 +116,11 @@ function onHeartFormed() {
   // Glow backdrop
   document.getElementById("heart-glow").classList.add("active");
 
-  // Reveal message
-  document.getElementById("golden-message").classList.add("show");
+  // Reveal message instantly
+  const msg = document.getElementById("golden-message");
+  msg.style.transition = "none";
+  msg.style.opacity = "1";
+  msg.style.transform = "translate(-50%, 0)";
 
   // Heartbeat pulse via JS
   let beat = 0;
@@ -152,6 +155,7 @@ function render(ts) {
     geometry.attributes.position.needsUpdate = true;
 
     if (progress >= 1) onHeartFormed();
+    else if (progress >= 0.85 && !formed) onHeartFormed();
   }
 
   // Gentle sway
@@ -182,7 +186,7 @@ function startFallingEmojis() {
     setTimeout(() => el.remove(), dur * 1000);
   }
 
-  for (let i = 0; i < 8; i++) setTimeout(spawn, i * 150);
+  for (let i = 0; i < 15; i++) spawn();
   setInterval(spawn, 320);
 }
 
