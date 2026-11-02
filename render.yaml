@@ -3,5 +3,5 @@ services:
     name: vaishu
     env: static
     buildCommand: ""
-    staticPublishPath: ./dist
+    staticPublishPath: .
 
